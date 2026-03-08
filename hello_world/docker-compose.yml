@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  flutter_app:
+    build: .
+    container_name: flutter_web
+    ports:
+      - "8081:80"
+    depends_on:
+      - postgres
+    volumes:
+      - media:/app/media
+    environment:
+      - DATABASE_URL=postgres://user:password@postgres:5432/flutter_db
+    networks:
+      - app_network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: flutter_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - media:/var/lib/postgresql/media
+    ports:
+      - "5433:5432"
+    networks:
+      - app_network
+
+volumes:
+  media:
+    name: media
+  postgres_data:
+
+networks:
+  app_network:
+    driver: bridge
