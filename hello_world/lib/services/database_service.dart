@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 
 class DatabaseService {
   static const String baseUrl = 'http://localhost:8000'; // для локальной разработки
@@ -21,7 +22,7 @@ class DatabaseService {
         throw Exception('Failed to load users: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching users: $e');
+      debugPrint('Error fetching users: $e');
       return [];
     }
   }
@@ -40,7 +41,7 @@ class DatabaseService {
       );
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      print('Error adding user: $e');
+      debugPrint('Error adding user: $e');
       return false;
     }
   }
@@ -51,7 +52,7 @@ class DatabaseService {
       final response = await http.delete(Uri.parse('$baseUrl/users/$id'));
       return response.statusCode == 200;
     } catch (e) {
-      print('Error deleting user: $e');
+      debugPrint('Error deleting user: $e');
       return false;
     }
   }

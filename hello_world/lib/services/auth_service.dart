@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 
 class AuthService {
   static bool _isLoggedIn = false;
@@ -32,7 +33,7 @@ class AuthService {
       }
       return false;
     } catch (e) {
-      print('Login error: $e');
+      debugPrint('Login error: $e');
       return false;
     }
   }

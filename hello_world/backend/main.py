@@ -7,6 +7,7 @@ from typing import List, Optional
 import os
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
+from passlib.context import CryptContext
 
 load_dotenv()
 
@@ -15,6 +16,9 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@postgres:54
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+# Контекст для хеширования паролей
+pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 
 # Модель базы данных
 class UserDB(Base):
@@ -85,8 +89,8 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     existing = db.query(UserDB).filter(UserDB.email == user.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
-    # Хеширование пароля (упрощённое)
-    password_hash = user.password if user.password else ""
+    # Хеширование пароля
+    password_hash = pwd_context.hash(user.password) if user.password else ""
     db_user = UserDB(name=user.name, email=user.email, password_hash=password_hash)
     db.add(db_user)
     db.commit()
@@ -110,8 +114,8 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     ).first()
     if not user:
         return LoginResponse(success=False, message="User not found")
-    # Проверяем пароль (пока просто сравнение, так как пароль не хешируется)
-    if user.password_hash != login_data.password:
+    # Проверяем пароль (сравниваем хеш)
+    if not user.password_hash or not pwd_context.verify(login_data.password, user.password_hash):
         return LoginResponse(success=False, message="Invalid password")
     return LoginResponse(
         success=True,
