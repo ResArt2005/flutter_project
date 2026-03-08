@@ -1,37 +1,60 @@
 // Сервис для имитации работы с PostgreSQL
 class DatabaseService {
+  // Временное хранилище пользователей в памяти
+  static final List<Map<String, dynamic>> _users = [
+    {'id': 1, 'name': 'Иван Иванов', 'email': 'ivan@example.com', 'passwordHash': ''},
+    {'id': 2, 'name': 'Петр Петров', 'email': 'petr@example.com', 'passwordHash': ''},
+    {'id': 3, 'name': 'Сидор Сидоров', 'email': 'sidor@example.com', 'passwordHash': ''},
+  ];
+  static int _nextId = 4;
+
   // Имитация подключения к базе данных
   static Future<bool> connect() async {
     await Future.delayed(const Duration(seconds: 1));
     return true;
   }
 
-  // Имитация получения данных
+  // Получение списка пользователей
   static Future<List<Map<String, dynamic>>> getUsers() async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    return [
-      {'id': 1, 'name': 'Иван Иванов', 'email': 'ivan@example.com'},
-      {'id': 2, 'name': 'Петр Петров', 'email': 'petr@example.com'},
-      {'id': 3, 'name': 'Сидор Сидоров', 'email': 'sidor@example.com'},
-    ];
+    await Future.delayed(const Duration(milliseconds: 100));
+    return List.from(_users);
   }
 
-  // Имитация добавления данных
-  static Future<bool> addUser(String name, String email) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    // В реальности здесь был бы INSERT в PostgreSQL
+  // Добавление пользователя
+  static Future<bool> addUser(String name, String email, {String password = ''}) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    final newUser = {
+      'id': _nextId++,
+      'name': name,
+      'email': email,
+      'passwordHash': password.isNotEmpty ? _hashPassword(password) : '',
+    };
+    _users.add(newUser);
     return true;
   }
 
-  // Имитация обновления данных
+  // Обновление пользователя
   static Future<bool> updateUser(int id, String name, String email) async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    await Future.delayed(const Duration(milliseconds: 200));
+    final index = _users.indexWhere((user) => user['id'] == id);
+    if (index >= 0) {
+      _users[index]['name'] = name;
+      _users[index]['email'] = email;
+      return true;
+    }
+    return false;
+  }
+
+  // Удаление пользователя
+  static Future<bool> deleteUser(int id) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    _users.removeWhere((user) => user['id'] == id);
     return true;
   }
 
-  // Имитация удаления данных
-  static Future<bool> deleteUser(int id) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return true;
+  // Хеширование пароля (упрощённое)
+  static String _hashPassword(String password) {
+    // В реальном приложении используйте bcrypt или аналоги
+    return password.hashCode.toString();
   }
 }

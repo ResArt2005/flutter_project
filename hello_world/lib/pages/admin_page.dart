@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/database_service.dart';
 import 'login_page.dart';
 
 class AdminPage extends StatefulWidget {
@@ -60,25 +61,7 @@ class _AdminPageState extends State<AdminPage> {
       ),
       body: Center(
         child: _isLoggedIn
-            ? Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Добро пожаловать, $_username!',
-                    style: const TextStyle(fontSize: 24),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Вы успешно авторизованы.',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                  const SizedBox(height: 30),
-                  ElevatedButton(
-                    onPressed: _logout,
-                    child: const Text('Выйти'),
-                  ),
-                ],
-              )
+            ? UserManagementWidget(username: _username)
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -94,6 +77,171 @@ class _AdminPageState extends State<AdminPage> {
                   ),
                 ],
               ),
+      ),
+    );
+  }
+}
+
+class UserManagementWidget extends StatefulWidget {
+  final String? username;
+
+  const UserManagementWidget({super.key, this.username});
+
+  @override
+  State<UserManagementWidget> createState() => _UserManagementWidgetState();
+}
+
+class _UserManagementWidgetState extends State<UserManagementWidget> {
+  List<Map<String, dynamic>> _users = [];
+  bool _loading = true;
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
+  }
+
+  Future<void> _loadUsers() async {
+    setState(() => _loading = true);
+    final users = await DatabaseService.getUsers();
+    setState(() {
+      _users = users;
+      _loading = false;
+    });
+  }
+
+  Future<void> _addUser() async {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    if (name.isEmpty || email.isEmpty) {
+      _showSnackBar('Заполните имя и email');
+      return;
+    }
+    final success = await DatabaseService.addUser(name, email, password: password);
+    if (success) {
+      _nameController.clear();
+      _emailController.clear();
+      _passwordController.clear();
+      await _loadUsers();
+      _showSnackBar('Пользователь добавлен');
+    } else {
+      _showSnackBar('Ошибка добавления');
+    }
+  }
+
+  Future<void> _deleteUser(int id) async {
+    final success = await DatabaseService.deleteUser(id);
+    if (success) {
+      await _loadUsers();
+      _showSnackBar('Пользователь удалён');
+    } else {
+      _showSnackBar('Ошибка удаления');
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Добро пожаловать, ${widget.username ?? 'администратор'}!',
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Управление пользователями',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 20),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Добавить нового пользователя',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Имя',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _passwordController,
+                    decoration: const InputDecoration(
+                      labelText: 'Пароль (опционально)',
+                      border: OutlineInputBorder(),
+                    ),
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: _addUser,
+                    child: const Text('Добавить пользователя'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 30),
+          const Text(
+            'Список пользователей',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : Expanded(
+                  child: ListView.builder(
+                    itemCount: _users.length,
+                    itemBuilder: (context, index) {
+                      final user = _users[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            child: Text(user['id'].toString()),
+                          ),
+                          title: Text(user['name']),
+                          subtitle: Text(user['email']),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _deleteUser(user['id']),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+        ],
       ),
     );
   }
