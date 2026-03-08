@@ -63,12 +63,13 @@ class _LoginPageState extends State<LoginPage> {
               TextFormField(
                 controller: _usernameController,
                 decoration: const InputDecoration(
-                  labelText: 'Имя пользователя',
+                  labelText: 'Email или имя пользователя',
                   border: OutlineInputBorder(),
+                  hintText: 'admin@example.com или admin',
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Введите имя пользователя';
+                    return 'Введите email или имя пользователя';
                   }
                   return null;
                 },

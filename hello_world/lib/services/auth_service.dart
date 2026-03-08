@@ -1,34 +1,47 @@
 import 'dart:convert';
-import 'package:crypto/crypto.dart';
+import 'package:http/http.dart' as http;
 
 class AuthService {
   static bool _isLoggedIn = false;
   static String? _username;
+  static String? _email;
 
-  static const String _storedHashedPassword = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918'; // sha256 of "admin"
+  static const String baseUrl = 'http://localhost:8000'; // для локальной разработки
+  // В Docker-сети используйте 'http://backend:8000'
 
-  // Хеширование пароля
-  static String _hashPassword(String password) {
-    var bytes = utf8.encode(password);
-    var digest = sha256.convert(bytes);
-    return digest.toString();
-  }
-
-  // Проверка логина и пароля
+  // Проверка логина и пароля через API
   static Future<bool> login(String username, String password) async {
-    // Простая проверка: пользователь "admin", пароль "admin"
-    if (username == 'admin' && _hashPassword(password) == _storedHashedPassword) {
-      _isLoggedIn = true;
-      _username = username;
-      return true;
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': username,
+          'password': password,
+        }),
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        final bool success = data['success'] ?? false;
+        if (success) {
+          _isLoggedIn = true;
+          _username = data['user']['name'];
+          _email = data['user']['email'];
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      print('Login error: $e');
+      return false;
     }
-    return false;
   }
 
   // Выход
   static Future<void> logout() async {
     _isLoggedIn = false;
     _username = null;
+    _email = null;
   }
 
   // Проверка, авторизован ли пользователь
@@ -39,5 +52,10 @@ class AuthService {
   // Получение имени текущего пользователя
   static Future<String?> getCurrentUser() async {
     return _username;
+  }
+
+  // Получение email текущего пользователя
+  static Future<String?> getCurrentEmail() async {
+    return _email;
   }
 }

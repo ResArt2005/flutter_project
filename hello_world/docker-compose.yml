@@ -1,17 +1,17 @@
 version: '3.8'
 
 services:
-  flutter_app:
-    build: .
-    container_name: flutter_web
+  backend:
+    build: ./backend
+    container_name: backend_api
     ports:
-      - "8081:80"
+      - "8000:8000"
     depends_on:
       - postgres
-    volumes:
-      - media:/app/media
     environment:
-      - DATABASE_URL=postgres://user:password@postgres:5432/flutter_db
+      - DATABASE_URL=postgresql://user:password@postgres:5432/flutter_db
+    volumes:
+      - ./backend:/app
     networks:
       - app_network
 
@@ -24,15 +24,25 @@ services:
       POSTGRES_DB: flutter_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - media:/var/lib/postgresql/media
     ports:
       - "5433:5432"
     networks:
       - app_network
 
+  # Flutter веб-приложение (опционально, можно закомментировать если не нужно)
+  flutter_app:
+    build: .
+    container_name: flutter_web
+    ports:
+      - "8081:80"
+    depends_on:
+      - backend
+    environment:
+      - API_URL=http://backend:8000
+    networks:
+      - app_network
+
 volumes:
-  media:
-    name: media
   postgres_data:
 
 networks:

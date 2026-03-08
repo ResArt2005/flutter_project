@@ -1,17 +1,94 @@
 # hello_world
 
-A new Flutter project.
+Flutter приложение с админкой и Python бэкендом.
 
-## Getting Started
+## Архитектура
 
-This project is a starting point for a Flutter application.
+Проект состоит из трёх сервисов, запускаемых через Docker Compose:
 
-A few resources to get you started if this is your first Flutter project:
+1. **Flutter Web** — фронтенд на Flutter, скомпилированный в веб-приложение.
+2. **Python Backend (FastAPI)** — REST API для управления пользователями.
+3. **PostgreSQL** — база данных для хранения пользователей.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Требования
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- Docker и Docker Compose
+- (Опционально) Flutter SDK для локальной разработки
+
+## Запуск
+
+1. Клонируйте репозиторий и перейдите в его корень.
+
+2. Запустите все сервисы командой:
+   ```bash
+   docker-compose up --build
+   ```
+
+3. После успешного запуска откройте в браузере:
+   - **Flutter приложение**: http://localhost:8081
+   - **API документация (Swagger)**: http://localhost:8000/docs
+   - **API health-чек**: http://localhost:8000/health
+
+## Использование
+
+### Админка
+1. На главной странице Flutter приложения перейдите в раздел "Администрирование".
+2. Войдите с учётными данными:
+   - **Email/имя пользователя**: `admin` или `admin@example.com`
+   - **Пароль**: `admin`
+3. После входа вы сможете просматривать, добавлять и удалять пользователей.
+
+### API эндпоинты
+
+- `GET /users` — список всех пользователей.
+- `POST /users` — создание нового пользователя (тело: `{"name": "...", "email": "...", "password": "..."}`).
+- `DELETE /users/{id}` — удаление пользователя по ID.
+- `POST /auth/login` — аутентификация (тело: `{"username": "...", "password": "..."}`).
+
+## Разработка
+
+### Локальная разработка Flutter
+Если вы хотите запустить Flutter приложение локально (без Docker), выполните:
+```bash
+flutter run -d chrome
+```
+При этом необходимо, чтобы бэкенд был доступен по адресу `http://localhost:8000`. Убедитесь, что контейнеры бэкенда и PostgreSQL запущены.
+
+### Изменение бэкенда
+Код бэкенда находится в папке `backend/`. После внесения изменений пересоберите образ:
+```bash
+docker-compose up --build backend
+```
+
+### Переменные окружения
+- `DATABASE_URL` — строка подключения к PostgreSQL (по умолчанию `postgresql://user:password@postgres:5432/flutter_db`).
+- `BACKEND_PORT` — порт, на котором работает FastAPI (по умолчанию 8000).
+
+## Структура проекта
+
+```
+hello_world/
+├── backend/                 # Python FastAPI приложение
+│   ├── main.py             # Основной файл API
+│   ├── requirements.txt    # Зависимости Python
+│   ├── Dockerfile          # Образ бэкенда
+│   └── .env                # Переменные окружения (не в репозитории)
+├── lib/                    # Исходный код Flutter
+│   ├── main.dart
+│   ├── pages/              # Страницы приложения
+│   └── services/           # Сервисы (аутентификация, работа с API)
+├── docker-compose.yml      # Конфигурация Docker Compose
+├── Dockerfile              # Образ Flutter Web
+├── pubspec.yaml            # Зависимости Flutter
+└── README.md               # Этот файл
+```
+
+## Примечания
+
+- Пароли хранятся в открытом виде (для демонстрации). В продакшене необходимо использовать хеширование (например, bcrypt).
+- CORS настроен на разрешение запросов со всех доменов (`*`). В продакшене следует ограничить домены.
+- Для работы в Docker сети Flutter приложение обращается к бэкенду по имени сервиса `backend`. При локальном запуске Flutter (без Docker) нужно изменить `baseUrl` в `auth_service.dart` и `database_service.dart` на `http://localhost:8000`.
+
+## Лицензия
+
+MIT

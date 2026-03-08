@@ -1,60 +1,70 @@
-// Сервис для имитации работы с PostgreSQL
-class DatabaseService {
-  // Временное хранилище пользователей в памяти
-  static final List<Map<String, dynamic>> _users = [
-    {'id': 1, 'name': 'Иван Иванов', 'email': 'ivan@example.com', 'passwordHash': ''},
-    {'id': 2, 'name': 'Петр Петров', 'email': 'petr@example.com', 'passwordHash': ''},
-    {'id': 3, 'name': 'Сидор Сидоров', 'email': 'sidor@example.com', 'passwordHash': ''},
-  ];
-  static int _nextId = 4;
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
-  // Имитация подключения к базе данных
-  static Future<bool> connect() async {
-    await Future.delayed(const Duration(seconds: 1));
-    return true;
-  }
+class DatabaseService {
+  static const String baseUrl = 'http://localhost:8000'; // для локальной разработки
+  // В Docker-сети используйте 'http://backend:8000'
 
   // Получение списка пользователей
   static Future<List<Map<String, dynamic>>> getUsers() async {
-    await Future.delayed(const Duration(milliseconds: 100));
-    return List.from(_users);
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/users'));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((user) => {
+          'id': user['id'],
+          'name': user['name'],
+          'email': user['email'],
+          'passwordHash': '',
+        }).toList();
+      } else {
+        throw Exception('Failed to load users: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching users: $e');
+      return [];
+    }
   }
 
   // Добавление пользователя
   static Future<bool> addUser(String name, String email, {String password = ''}) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    final newUser = {
-      'id': _nextId++,
-      'name': name,
-      'email': email,
-      'passwordHash': password.isNotEmpty ? _hashPassword(password) : '',
-    };
-    _users.add(newUser);
-    return true;
-  }
-
-  // Обновление пользователя
-  static Future<bool> updateUser(int id, String name, String email) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    final index = _users.indexWhere((user) => user['id'] == id);
-    if (index >= 0) {
-      _users[index]['name'] = name;
-      _users[index]['email'] = email;
-      return true;
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/users'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'password': password,
+        }),
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print('Error adding user: $e');
+      return false;
     }
-    return false;
   }
 
   // Удаление пользователя
   static Future<bool> deleteUser(int id) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    _users.removeWhere((user) => user['id'] == id);
-    return true;
+    try {
+      final response = await http.delete(Uri.parse('$baseUrl/users/$id'));
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error deleting user: $e');
+      return false;
+    }
   }
 
-  // Хеширование пароля (упрощённое)
-  static String _hashPassword(String password) {
-    // В реальном приложении используйте bcrypt или аналоги
-    return password.hashCode.toString();
+  // Обновление пользователя (опционально, если нужно)
+  static Future<bool> updateUser(int id, String name, String email) async {
+    // Эндпоинт для обновления не реализован в бэкенде, можно добавить позже
+    return false;
+  }
+
+  // Имитация подключения к базе данных (оставлено для совместимости)
+  static Future<bool> connect() async {
+    await Future.delayed(const Duration(seconds: 1));
+    return true;
   }
 }
