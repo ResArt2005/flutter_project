@@ -6,6 +6,8 @@ class AuthService {
   static bool _isLoggedIn = false;
   static String? _username;
   static String? _email;
+  static int? _userId;
+  static bool? _isAdmin; // будет использоваться позже
 
   static const String baseUrl = 'http://localhost:8000'; // для локальной разработки
   // В Docker-сети используйте 'http://backend:8000'
@@ -28,6 +30,8 @@ class AuthService {
           _isLoggedIn = true;
           _username = data['user']['name'];
           _email = data['user']['email'];
+          _userId = data['user']['id'];
+          _isAdmin = data['user']['is_admin'] ?? false;
           return true;
         }
       }
@@ -43,6 +47,8 @@ class AuthService {
     _isLoggedIn = false;
     _username = null;
     _email = null;
+    _userId = null;
+    _isAdmin = null;
   }
 
   // Проверка, авторизован ли пользователь
@@ -58,5 +64,15 @@ class AuthService {
   // Получение email текущего пользователя
   static Future<String?> getCurrentEmail() async {
     return _email;
+  }
+
+  // Получение ID текущего пользователя
+  static Future<int?> getCurrentUserId() async {
+    return _userId;
+  }
+
+  // Проверка, является ли текущий пользователь администратором
+  static Future<bool> isAdmin() async {
+    return _isAdmin ?? false;
   }
 }

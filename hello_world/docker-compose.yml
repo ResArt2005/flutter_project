@@ -12,6 +12,7 @@ services:
       - DATABASE_URL=postgresql://user:password@postgres:5432/flutter_db
     volumes:
       - ./backend:/app
+      - media:/app/media
     networks:
       - app_network
 
@@ -44,6 +45,7 @@ services:
 
 volumes:
   postgres_data:
+  media:
 
 networks:
   app_network:

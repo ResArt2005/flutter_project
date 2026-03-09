@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
+import '../services/photo_service.dart';
 import 'login_page.dart';
 
 class AdminPage extends StatefulWidget {
@@ -61,7 +62,7 @@ class _AdminPageState extends State<AdminPage> {
       ),
       body: Center(
         child: _isLoggedIn
-            ? UserManagementWidget(username: _username)
+            ? AdminTabs(username: _username)
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -82,11 +83,80 @@ class _AdminPageState extends State<AdminPage> {
   }
 }
 
-class UserManagementWidget extends StatefulWidget {
+class AdminTabs extends StatefulWidget {
   final String? username;
 
-  const UserManagementWidget({super.key, this.username});
+  const AdminTabs({super.key, this.username});
 
+  @override
+  State<AdminTabs> createState() => _AdminTabsState();
+}
+
+class _AdminTabsState extends State<AdminTabs> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  bool _isAdmin = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAdmin();
+  }
+
+  Future<void> _checkAdmin() async {
+    final isAdmin = await AuthService.isAdmin();
+    setState(() {
+      _isAdmin = isAdmin;
+      _tabController = TabController(
+        length: _isAdmin ? 2 : 1,
+        vsync: this,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tabs = <Tab>[
+      const Tab(icon: Icon(Icons.people), text: 'Пользователи'),
+    ];
+    final tabViews = <Widget>[
+      UserManagementWidget(),
+    ];
+    if (_isAdmin) {
+      tabs.add(const Tab(icon: Icon(Icons.photo_library), text: 'Фото'));
+      tabViews.add(PhotoManagementWidget());
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: Text(
+            'Добро пожаловать, ${widget.username ?? 'администратор'}!',
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+        ),
+        TabBar(
+          controller: _tabController,
+          tabs: tabs,
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: tabViews,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class UserManagementWidget extends StatefulWidget {
   @override
   State<UserManagementWidget> createState() => _UserManagementWidgetState();
 }
@@ -156,11 +226,6 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Добро пожаловать, ${widget.username ?? 'администратор'}!',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
           const Text(
             'Управление пользователями',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
@@ -241,6 +306,182 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                     },
                   ),
                 ),
+        ],
+      ),
+    );
+  }
+}
+
+class PhotoManagementWidget extends StatefulWidget {
+  @override
+  State<PhotoManagementWidget> createState() => _PhotoManagementWidgetState();
+}
+
+class _PhotoManagementWidgetState extends State<PhotoManagementWidget> {
+  List<Photo> _photos = [];
+  bool _loading = true;
+  bool _isAdmin = false;
+  final TextEditingController _filePickerController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAdmin();
+    _loadPhotos();
+  }
+
+  Future<void> _checkAdmin() async {
+    final isAdmin = await AuthService.isAdmin();
+    setState(() {
+      _isAdmin = isAdmin;
+    });
+  }
+
+  Future<void> _loadPhotos() async {
+    if (!_isAdmin) return;
+    setState(() => _loading = true);
+    final photos = await PhotoService.getPhotos();
+    setState(() {
+      _photos = photos;
+      _loading = false;
+    });
+  }
+
+  Future<void> _uploadPhoto() async {
+    if (!_isAdmin) {
+      _showSnackBar('Требуются права администратора');
+      return;
+    }
+    // TODO: реализовать выбор файла через file_picker
+    // Временно заглушка
+    _showSnackBar('Функция загрузки фото будет реализована позже');
+  }
+
+  Future<void> _deletePhoto(int photoId) async {
+    if (!_isAdmin) {
+      _showSnackBar('Требуются права администратора');
+      return;
+    }
+    final userId = await AuthService.getCurrentUserId();
+    if (userId == null) {
+      _showSnackBar('Ошибка: пользователь не авторизован');
+      return;
+    }
+    final success = await PhotoService.deletePhoto(photoId, userId: userId);
+    if (success) {
+      await _loadPhotos();
+      _showSnackBar('Фото удалено');
+    } else {
+      _showSnackBar('Ошибка удаления');
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isAdmin) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: Text(
+            'У вас недостаточно прав для управления фотографиями. Требуется роль администратора.',
+            style: TextStyle(fontSize: 18, color: Colors.red),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Управление фотографиями',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 20),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Загрузить новое фото',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _filePickerController,
+                    readOnly: true,
+                    decoration: InputDecoration(
+                      labelText: 'Файл не выбран',
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.upload_file),
+                        onPressed: _uploadPhoto,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: _uploadPhoto,
+                    child: const Text('Загрузить фото'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 30),
+          const Text(
+            'Список фотографий',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _photos.isEmpty
+                  ? const Center(
+                      child: Text('Нет загруженных фото', style: TextStyle(fontSize: 16)),
+                    )
+                  : Expanded(
+                      child: ListView.builder(
+                        itemCount: _photos.length,
+                        itemBuilder: (context, index) {
+                          final photo = _photos[index];
+                          return Card(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            child: ListTile(
+                              leading: Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  image: DecorationImage(
+                                    image: NetworkImage(
+                                        'http://localhost:8000${photo.filepath}'),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              title: Text(photo.filename),
+                              subtitle: Text(
+                                  '${photo.size ~/ 1024} КБ • ${photo.uploadedAt.day}.${photo.uploadedAt.month}.${photo.uploadedAt.year}'),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () => _deletePhoto(photo.id),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
         ],
       ),
     );
