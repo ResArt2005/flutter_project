@@ -99,7 +99,7 @@ class _HomePageState extends State<HomePage> {
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Color.fromRGBO(0, 0, 0, 0.1),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -151,8 +151,8 @@ class _HomePageState extends State<HomePage> {
               margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Theme.of(context).primaryColor.withOpacity(
-                      entry.key == 0 ? 0.9 : 0.3, // TODO: отслеживать текущий индекс
+                color: Theme.of(context).primaryColor.withAlpha(
+                      entry.key == 0 ? 230 : 77,
                     ),
               ),
             );

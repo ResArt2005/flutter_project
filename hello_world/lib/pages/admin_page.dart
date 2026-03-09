@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import '../services/photo_service.dart';
@@ -157,6 +158,8 @@ class _AdminTabsState extends State<AdminTabs> with SingleTickerProviderStateMix
 }
 
 class UserManagementWidget extends StatefulWidget {
+  const UserManagementWidget({super.key});
+
   @override
   State<UserManagementWidget> createState() => _UserManagementWidgetState();
 }
@@ -313,6 +316,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 }
 
 class PhotoManagementWidget extends StatefulWidget {
+  const PhotoManagementWidget({super.key});
+
   @override
   State<PhotoManagementWidget> createState() => _PhotoManagementWidgetState();
 }
@@ -322,6 +327,7 @@ class _PhotoManagementWidgetState extends State<PhotoManagementWidget> {
   bool _loading = true;
   bool _isAdmin = false;
   final TextEditingController _filePickerController = TextEditingController();
+  PlatformFile? _selectedFile;
 
   @override
   void initState() {
@@ -347,14 +353,73 @@ class _PhotoManagementWidgetState extends State<PhotoManagementWidget> {
     });
   }
 
+  Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+    if (result == null || result.files.isEmpty) return;
+    setState(() {
+      _selectedFile = result.files.first;
+      _filePickerController.text = _selectedFile!.name;
+    });
+  }
+
+  String _getMimeType(String? extension) {
+    switch (extension?.toLowerCase()) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      case 'bmp':
+        return 'image/bmp';
+      case 'webp':
+        return 'image/webp';
+      default:
+        return 'image/jpeg';
+    }
+  }
+
   Future<void> _uploadPhoto() async {
     if (!_isAdmin) {
       _showSnackBar('Требуются права администратора');
       return;
     }
-    // TODO: реализовать выбор файла через file_picker
-    // Временно заглушка
-    _showSnackBar('Функция загрузки фото будет реализована позже');
+    if (_selectedFile == null) {
+      _showSnackBar('Сначала выберите файл');
+      return;
+    }
+    final userId = await AuthService.getCurrentUserId();
+    if (userId == null) {
+      _showSnackBar('Ошибка: пользователь не авторизован');
+      return;
+    }
+    try {
+      final bytes = _selectedFile!.bytes!;
+      final fileName = _selectedFile!.name;
+      final mimeType = _getMimeType(_selectedFile!.extension);
+      final photo = await PhotoService.uploadPhoto(
+        bytes,
+        fileName,
+        mimeType,
+        userId: userId,
+      );
+      if (photo != null) {
+        _showSnackBar('Фото успешно загружено');
+        await _loadPhotos();
+        setState(() {
+          _selectedFile = null;
+          _filePickerController.clear();
+        });
+      } else {
+        _showSnackBar('Ошибка загрузки фото');
+      }
+    } catch (e) {
+      _showSnackBar('Ошибка: $e');
+    }
   }
 
   Future<void> _deletePhoto(int photoId) async {
@@ -425,7 +490,7 @@ class _PhotoManagementWidgetState extends State<PhotoManagementWidget> {
                       border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.upload_file),
-                        onPressed: _uploadPhoto,
+                        onPressed: _pickFile,
                       ),
                     ),
                   ),
