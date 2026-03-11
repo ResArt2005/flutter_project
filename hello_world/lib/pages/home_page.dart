@@ -95,7 +95,7 @@ class _HomePageState extends State<HomePage> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          width: 350, // увеличим ширину для 3 картинок
+          width: 650,
           height: 200,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
@@ -112,7 +112,7 @@ class _HomePageState extends State<HomePage> {
             itemCount: _photos.length,
             options: CarouselOptions(
               height: 200,
-              viewportFraction: 0.33, // показываем 3 картинки (1/3 ширины каждая)
+              viewportFraction: 0.35,
               autoPlay: autoPlay,
               autoPlayInterval: const Duration(seconds: 5),
               autoPlayAnimationDuration: const Duration(milliseconds: 800),
@@ -130,7 +130,7 @@ class _HomePageState extends State<HomePage> {
             itemBuilder: (context, index, realIndex) {
               final photo = _photos[index];
               return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
+                margin: const EdgeInsets.symmetric(horizontal: 8),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   color: const Color(0xFFF0F0F0),
