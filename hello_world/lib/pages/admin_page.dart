@@ -123,18 +123,19 @@ class _AdminTabsState extends State<AdminTabs> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    final tabs = <Tab>[
-      const Tab(icon: Icon(Icons.people), text: 'Пользователи'),
-    ];
-    final tabViews = <Widget>[
-      UserManagementWidget(),
-    ];
+    final tabs = <Tab>[];
+    final tabViews = <Widget>[];
+
     if (_isAdmin) {
+      tabs.add(const Tab(icon: Icon(Icons.people), text: 'Пользователи'));
+      tabViews.add(UserManagementWidget());
       tabs.add(const Tab(icon: Icon(Icons.photo_library), text: 'Фото'));
       tabViews.add(PhotoManagementWidget());
-      tabs.add(const Tab(icon: Icon(Icons.info), text: 'О пользователе'));
-      tabViews.add(UserMetadataWidget());
     }
+
+    // Вкладка "О пользователях" для всех авторизованных пользователей
+    tabs.add(const Tab(icon: Icon(Icons.info), text: 'О пользователях'));
+    tabViews.add(UserMetadataWidget());
 
     return Column(
       children: [
