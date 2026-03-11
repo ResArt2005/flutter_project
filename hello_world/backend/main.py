@@ -43,8 +43,8 @@ class PhotoDB(Base):
     size = Column(Integer, nullable=False)  # размер в байтах
     mime_type = Column(String, nullable=False)
 
-# Создание таблиц
-Base.metadata.create_all(bind=engine)
+# Создание таблиц через миграции (убрано)
+# Base.metadata.create_all(bind=engine)
 
 # Pydantic модели
 class UserCreate(BaseModel):
