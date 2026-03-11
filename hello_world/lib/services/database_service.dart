@@ -16,6 +16,7 @@ class DatabaseService {
           'id': user['id'],
           'name': user['name'],
           'email': user['email'],
+          'metadata': user['metadata'], // может быть null
           'passwordHash': '',
         }).toList();
       } else {
@@ -28,16 +29,20 @@ class DatabaseService {
   }
 
   // Добавление пользователя
-  static Future<bool> addUser(String name, String email, {String password = ''}) async {
+  static Future<bool> addUser(String name, String email, {String password = '', Map<String, dynamic>? metadata}) async {
     try {
+      final body = <String, dynamic>{
+        'name': name,
+        'email': email,
+        'password': password,
+      };
+      if (metadata != null) {
+        body['metadata'] = metadata;
+      }
       final response = await http.post(
         Uri.parse('$baseUrl/users'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'name': name,
-          'email': email,
-          'password': password,
-        }),
+        body: jsonEncode(body),
       );
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {

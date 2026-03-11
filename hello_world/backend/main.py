@@ -1,10 +1,10 @@
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form, Header
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.sql import func
-from pydantic import BaseModel
-from typing import List, Optional
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 import os
 import shutil
@@ -33,6 +33,7 @@ class UserDB(Base):
     email = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=True)
     is_admin = Column(Boolean, default=False, nullable=False)
+    user_metadata = Column('metadata', JSON, nullable=True, default=None)
 
 class PhotoDB(Base):
     __tablename__ = "photos"
@@ -52,15 +53,18 @@ class UserCreate(BaseModel):
     email: str
     password: str = ""
     is_admin: bool = False
+    metadata: Optional[Dict[str, Any]] = Field(None, alias='user_metadata', serialization_alias='metadata')
 
 class UserResponse(BaseModel):
     id: int
     name: str
     email: str
     is_admin: bool
+    metadata: Optional[Dict[str, Any]] = Field(None, alias='user_metadata', serialization_alias='metadata')
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 class LoginRequest(BaseModel):
     username: str  # может быть email или имя
@@ -130,7 +134,13 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Email already registered")
     # Хеширование пароля
     password_hash = pwd_context.hash(user.password) if user.password else ""
-    db_user = UserDB(name=user.name, email=user.email, password_hash=password_hash, is_admin=user.is_admin)
+    db_user = UserDB(
+        name=user.name,
+        email=user.email,
+        password_hash=password_hash,
+        is_admin=user.is_admin,
+        user_metadata=user.metadata
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -158,7 +168,13 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
         return LoginResponse(success=False, message="Invalid password")
     return LoginResponse(
         success=True,
-        user=UserResponse(id=user.id, name=user.name, email=user.email, is_admin=user.is_admin),
+        user=UserResponse(
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            is_admin=user.is_admin,
+            metadata=user.user_metadata
+        ),
         message="Login successful"
     )
 

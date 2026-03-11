@@ -108,7 +108,7 @@ class _AdminTabsState extends State<AdminTabs> with SingleTickerProviderStateMix
     setState(() {
       _isAdmin = isAdmin;
       _tabController = TabController(
-        length: _isAdmin ? 2 : 1,
+        length: _isAdmin ? 3 : 1,
         vsync: this,
       );
     });
@@ -131,6 +131,8 @@ class _AdminTabsState extends State<AdminTabs> with SingleTickerProviderStateMix
     if (_isAdmin) {
       tabs.add(const Tab(icon: Icon(Icons.photo_library), text: 'Фото'));
       tabViews.add(PhotoManagementWidget());
+      tabs.add(const Tab(icon: Icon(Icons.info), text: 'О пользователе'));
+      tabViews.add(UserMetadataWidget());
     }
 
     return Column(
@@ -552,6 +554,137 @@ class _PhotoManagementWidgetState extends State<PhotoManagementWidget> {
                               trailing: IconButton(
                                 icon: const Icon(Icons.delete, color: Colors.red),
                                 onPressed: () => _deletePhoto(photo.id),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+        ],
+      ),
+    );
+  }
+}
+class UserMetadataWidget extends StatefulWidget {
+  const UserMetadataWidget({super.key});
+
+  @override
+  State<UserMetadataWidget> createState() => _UserMetadataWidgetState();
+}
+
+class _UserMetadataWidgetState extends State<UserMetadataWidget> {
+  List<Map<String, dynamic>> _users = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
+  }
+
+  Future<void> _loadUsers() async {
+    setState(() => _loading = true);
+    final users = await DatabaseService.getUsers();
+    setState(() {
+      _users = users;
+      _loading = false;
+    });
+  }
+
+  Widget _buildMetadataWidget(dynamic metadata) {
+    if (metadata == null) {
+      return const Text('Нет метаданных', style: TextStyle(fontStyle: FontStyle.italic));
+    }
+    if (metadata is Map<String, dynamic>) {
+      final entries = metadata.entries.toList();
+      if (entries.isEmpty) {
+        return const Text('Пустой объект');
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: entries.map((entry) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2.0),
+          child: Text('${entry.key}: ${entry.value}'),
+        )).toList(),
+      );
+    }
+    if (metadata is List) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: metadata.asMap().entries.map((entry) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2.0),
+          child: Text('[$entry.key]: ${entry.value}'),
+        )).toList(),
+      );
+    }
+    return Text(metadata.toString());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Метаданные пользователей',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Здесь отображаются дополнительные метаданные, связанные с каждым пользователем.',
+            style: TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 20),
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _users.isEmpty
+                  ? const Center(child: Text('Нет пользователей'))
+                  : Expanded(
+                      child: ListView.builder(
+                        itemCount: _users.length,
+                        itemBuilder: (context, index) {
+                          final user = _users[index];
+                          final metadata = user['metadata'];
+                          return Card(
+                            margin: const EdgeInsets.symmetric(vertical: 8),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        child: Text(user['id'].toString()),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              user['name'],
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                            ),
+                                            Text(user['email'], style: const TextStyle(color: Colors.grey)),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'Метаданные:',
+                                    style: TextStyle(fontWeight: FontWeight.w500),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 8.0),
+                                    child: _buildMetadataWidget(metadata),
+                                  ),
+                                ],
                               ),
                             ),
                           );
