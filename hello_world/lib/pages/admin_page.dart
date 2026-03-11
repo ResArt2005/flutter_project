@@ -332,8 +332,16 @@ class _PhotoManagementWidgetState extends State<PhotoManagementWidget> {
   @override
   void initState() {
     super.initState();
-    _checkAdmin();
-    _loadPhotos();
+    _initializeData();
+  }
+
+  Future<void> _initializeData() async {
+    await _checkAdmin();
+    if (_isAdmin) {
+      await _loadPhotos();
+    } else {
+      setState(() => _loading = false);
+    }
   }
 
   Future<void> _checkAdmin() async {
@@ -344,7 +352,10 @@ class _PhotoManagementWidgetState extends State<PhotoManagementWidget> {
   }
 
   Future<void> _loadPhotos() async {
-    if (!_isAdmin) return;
+    if (!_isAdmin) {
+      setState(() => _loading = false);
+      return;
+    }
     setState(() => _loading = true);
     final photos = await PhotoService.getPhotos();
     setState(() {

@@ -15,6 +15,8 @@ class _HomePageState extends State<HomePage> {
   List<Photo> _photos = [];
   bool _loading = true;
   String? _error;
+  int _currentIndex = 0;
+  final CarouselSliderController _carouselController = CarouselSliderController();
 
   static const String baseUrl = 'http://localhost:8000'; // для локальной разработки
   // В Docker-сети используйте 'http://backend:8000'
@@ -93,8 +95,8 @@ class _HomePageState extends State<HomePage> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          width: 250,
-          height: 250,
+          width: 350, // увеличим ширину для 3 картинок
+          height: 200,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
@@ -106,22 +108,29 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
           child: CarouselSlider.builder(
+            carouselController: _carouselController,
             itemCount: _photos.length,
             options: CarouselOptions(
-              height: 250,
-              viewportFraction: 1.0,
+              height: 200,
+              viewportFraction: 0.33, // показываем 3 картинки (1/3 ширины каждая)
               autoPlay: autoPlay,
               autoPlayInterval: const Duration(seconds: 5),
               autoPlayAnimationDuration: const Duration(milliseconds: 800),
               autoPlayCurve: Curves.fastOutSlowIn,
               pauseAutoPlayOnTouch: true,
-              enlargeCenterPage: false,
+              enlargeCenterPage: true, // центральная картинка увеличена
               scrollDirection: Axis.horizontal,
+              enableInfiniteScroll: _photos.length > 1,
+              onPageChanged: (index, reason) {
+                setState(() {
+                  _currentIndex = index;
+                });
+              },
             ),
             itemBuilder: (context, index, realIndex) {
               final photo = _photos[index];
               return Container(
-                margin: const EdgeInsets.all(4),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   color: const Color(0xFFF0F0F0),
@@ -145,15 +154,18 @@ class _HomePageState extends State<HomePage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: _photos.asMap().entries.map((entry) {
-            return Container(
-              width: 8,
-              height: 8,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Theme.of(context).primaryColor.withAlpha(
-                      entry.key == 0 ? 230 : 77,
-                    ),
+            return GestureDetector(
+              onTap: () => _carouselController.jumpToPage(entry.key),
+              child: Container(
+                width: 8,
+                height: 8,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Theme.of(context).primaryColor.withAlpha(
+                        entry.key == _currentIndex ? 230 : 77,
+                      ),
+                ),
               ),
             );
           }).toList(),
