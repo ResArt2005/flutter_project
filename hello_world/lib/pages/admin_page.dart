@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/auth_service.dart';
@@ -172,6 +173,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _metadataController = TextEditingController();
 
   @override
   void initState() {
@@ -192,15 +194,26 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
-    if (name.isEmpty || email.isEmpty) {
-      _showSnackBar('Заполните имя и email');
+    final metadataText = _metadataController.text.trim();
+    if (name.isEmpty || password.isEmpty) {
+      _showSnackBar('Заполните имя и пароль');
       return;
     }
-    final success = await DatabaseService.addUser(name, email, password: password);
+    Map<String, dynamic>? metadata;
+    if (metadataText.isNotEmpty) {
+      try {
+        metadata = jsonDecode(metadataText) as Map<String, dynamic>;
+      } catch (e) {
+        _showSnackBar('Метаданные должны быть в формате JSON. Ошибка: $e');
+        return;
+      }
+    }
+    final success = await DatabaseService.addUser(name, email.isNotEmpty ? email : null, password: password, metadata: metadata);
     if (success) {
       _nameController.clear();
       _emailController.clear();
       _passwordController.clear();
+      _metadataController.clear();
       await _loadUsers();
       _showSnackBar('Пользователь добавлен');
     } else {
@@ -231,65 +244,88 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Управление пользователями',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 20),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+          Flexible(
+            flex: 2,
+            child: SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Добавить нового пользователя',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Имя',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _passwordController,
-                    decoration: const InputDecoration(
-                      labelText: 'Пароль (опционально)',
-                      border: OutlineInputBorder(),
-                    ),
-                    obscureText: true,
+                    'Управление пользователями',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: _addUser,
-                    child: const Text('Добавить пользователя'),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text(
+                            'Добавить нового пользователя',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _nameController,
+                            decoration: const InputDecoration(
+                              labelText: 'Имя',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _emailController,
+                            decoration: const InputDecoration(
+                              labelText: 'Email (опционально)',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: TextInputType.emailAddress,
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _passwordController,
+                            decoration: const InputDecoration(
+                              labelText: 'Пароль (обязательно)',
+                              border: OutlineInputBorder(),
+                            ),
+                            obscureText: true,
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _metadataController,
+                            decoration: const InputDecoration(
+                              labelText: 'Метаданные (JSON, опционально)',
+                              hintText: '{"ключ": "значение"}',
+                              border: OutlineInputBorder(),
+                            ),
+                            maxLines: 3,
+                          ),
+                          const SizedBox(height: 20),
+                          ElevatedButton(
+                            onPressed: _addUser,
+                            child: const Text('Добавить пользователя'),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
+                  const SizedBox(height: 30),
+                  const Text(
+                    'Список пользователей',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 12),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 30),
-          const Text(
-            'Список пользователей',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 12),
           _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Flexible(
+                  child: Center(child: CircularProgressIndicator()),
+                )
               : Expanded(
+                  flex: 5,
                   child: ListView.builder(
                     itemCount: _users.length,
                     itemBuilder: (context, index) {

@@ -29,15 +29,17 @@ class DatabaseService {
   }
 
   // Добавление пользователя
-  static Future<bool> addUser(String name, String email, {String password = '', Map<String, dynamic>? metadata}) async {
+  static Future<bool> addUser(String name, String? email, {required String password, Map<String, dynamic>? metadata}) async {
     try {
       final body = <String, dynamic>{
         'name': name,
-        'email': email,
         'password': password,
       };
+      if (email != null && email.isNotEmpty) {
+        body['email'] = email;
+      }
       if (metadata != null) {
-        body['metadata'] = metadata;
+        body['user_metadata'] = metadata;
       }
       final response = await http.post(
         Uri.parse('$baseUrl/users'),

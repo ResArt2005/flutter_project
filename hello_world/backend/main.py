@@ -30,8 +30,8 @@ class UserDB(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    email = Column(String, unique=True, nullable=False)
-    password_hash = Column(String, nullable=True)
+    email = Column(String, unique=True, nullable=True)
+    password_hash = Column(String, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
     user_metadata = Column('metadata', JSON, nullable=True, default=None)
 
@@ -50,15 +50,15 @@ class PhotoDB(Base):
 # Pydantic модели
 class UserCreate(BaseModel):
     name: str
-    email: str
-    password: str = ""
+    email: Optional[str] = None
+    password: str
     is_admin: bool = False
     metadata: Optional[Dict[str, Any]] = Field(None, alias='user_metadata', serialization_alias='metadata')
 
 class UserResponse(BaseModel):
     id: int
     name: str
-    email: str
+    email: Optional[str] = None
     is_admin: bool
     metadata: Optional[Dict[str, Any]] = Field(None, alias='user_metadata', serialization_alias='metadata')
 
@@ -128,12 +128,16 @@ def get_users(db: Session = Depends(get_db)):
 
 @app.post("/users", response_model=UserResponse)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
-    # Проверка на существующий email
-    existing = db.query(UserDB).filter(UserDB.email == user.email).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+    # Проверка на существующий email, если email предоставлен
+    if user.email is not None:
+        existing = db.query(UserDB).filter(UserDB.email == user.email).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already registered")
+    # Пароль обязателен
+    if not user.password:
+        raise HTTPException(status_code=400, detail="Password is required")
     # Хеширование пароля
-    password_hash = pwd_context.hash(user.password) if user.password else ""
+    password_hash = pwd_context.hash(user.password)
     db_user = UserDB(
         name=user.name,
         email=user.email,
